@@ -1,0 +1,52 @@
+#root {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.ant-layout {
+  background: #f5f5f5;
+}
+
+.ant-layout-sider {
+  border-left: 1px solid #f0f0f0;
+}
+
+.ant-upload-drag-icon .anticon {
+  font-size: 48px;
+  color: #1890ff;
+}
+
+.ant-upload-text {
+  color: rgba(0, 0, 0, 0.85);
+  font-size: 16px;
+  margin: 8px 0;
+}
+
+.ant-upload-hint {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 14px;
+}
+
+.sidebar-card {
+  margin-bottom: 16px;
+}
+
+.sidebar-card .ant-card-body {
+  padding: 16px;
+}
+
+.color-picker-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.label-color-preview {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #d9d9d9;
+}
