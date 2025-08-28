@@ -4,7 +4,7 @@
 
 ## Overview
 
-A **3D GLB mesh visualization tool** built with React + Three.js for viewing and exploring GLB/GLTF files with embedded labels and metadata. This tool provides an intuitive interface for 3D model inspection, label management, and interactive visualization. Visit by this [https://ni1o1.github.io/glb_label_viewer](https://ni1o1.github.io/glb_label_viewer).
+A **3D GLB mesh visualization tool** built with React + Three.js for viewing and exploring GLB/GLTF files with embedded labels and metadata. This tool provides an intuitive interface for 3D model inspection, label management, and interactive visualization. Visit by this [https://ni1o1.github.io/GLB_label_viewer](https://ni1o1.github.io/GLB_label_viewer).
 
 ## Features
 
