@@ -11,48 +11,49 @@ const initialState = {
   shadingMode: 'flat', // 'flat', 'smooth', 'wireframe', 'points'
   annotationBox: null,
   selectedPoints: [],
-  selectedPointsHistory: [], // Selection history
+  selectedPointsHistory: [], // 选择历史记录
   history: [],
   fileName: null,
   originalFileName: null,
   backgroundColor: '#fcfcfc',
   colorAdjustment: {
-    brightness: 1.0,    // Brightness adjustment (0.1 - 2.0)
-    contrast: 1.0,      // Contrast adjustment (0.1 - 2.0)
-    saturation: 1.0,    // Saturation adjustment (0.0 - 2.0)
-    gamma: 1.0          // Gamma correction (0.1 - 3.0)
+    brightness: 1.0,    // 亮度调整 (0.1 - 2.0)
+    contrast: 1.0,      // 对比度调整 (0.1 - 2.0)
+    saturation: 1.0,    // 饱和度调整 (0.0 - 2.0)
+    gamma: 1.0          // 伽马校正 (0.1 - 3.0)
   }, // 默认黑色背景
-  fileHeader: null,     // PLY file header information
-  fileFields: [],       // PLY file field list
-  labelInfo: null,      // Existing label information
+  fileHeader: null,     // PLY文件头信息
+  fileFields: [],       // PLY文件字段列表
+  labelInfo: null,      // 已有标签信息
   orientationMode: false, // 点云朝向调整模式
   transformMode: 'rotate', // 变换模式：'rotate' 或 'translate'
-  pointCloudRotation: [0, 0, 0, 1], // Point cloud rotation state (quaternion)
-  pointCloudPosition: [0, 0, 0], // Point cloud position state
+  pointCloudRotation: [0, 0, 0, 1], // 点云旋转状态（四元数）
+  pointCloudPosition: [0, 0, 0], // 点云位置状态
   editorMode: 'LASSO_SELECT', // 'BOX_SELECT', 'LASSO_SELECT', or 'RECTANGLE_SELECT'
-  centerOffset: [0, 0, 0], // Store point cloud center coordinates [x, y, z]
+  centerOffset: [0, 0, 0], // 存储点云的中心点坐标 [x, y, z]
   // Mesh相关状态
   hasMesh: false, // 是否包含Mesh数据
-  faces: [], // Face data: Array<{indices: number[], labelId: number | null}>
-  isPointCloudVisible: true, // Whether point cloud is visible
-  isMeshVisible: true, // Whether faces are visible
+  faces: [], // 面片数据：Array<{indices: number[], labelId: number | null}>
+  isPointCloudVisible: true, // 点云是否可见
+  isMeshVisible: true, // 面片是否可见
   meshSelectionMode: 'TOUCHING', // 'TOUCHING' | 'ENCLOSED'
-  selectedFaces: new Set(), // Selected face indices
-  isManualFaceSelection: false, // Flag for manually set face selection (like invert selection)
+  selectedFaces: new Set(), // 选中的面片索引
+  isManualFaceSelection: false, // 标志是否为手动设置的面片选择（如反选操作）
   materials: null, // 材质信息
   textureFile: null, // 纹理文件信息
-  meshOpacity: 1.0, // Face opacity (0.0 - 1.0)
+  meshOpacity: 1.0, // 面片透明度 (0.0 - 1.0)
   // 混合渲染架构新增字段
-  originalScene: null, // GLB/GLTF original scene object for high-fidelity rendering in default view
-  interactionMapping: null, // Interaction mapping metadata for raycast result mapping
+  originalScene: null, // GLB/GLTF原始场景对象，用于默认视图的高保真渲染
+  interactionMapping: null, // 交互映射元数据，用于射线检测结果的映射
+  originalFileBuffer: null, // 原始文件的ArrayBuffer数据，用于导出时重新生成GLB文件
   // Modal状态管理
-  isModalOpen: false, // Whether label management modal is open, used to control keyboard shortcuts
+  isModalOpen: false, // 标签管理Modal是否打开，用于控制快捷键响应
   // 坐标轴显示控制
-  showGridAndAxes: true, // Whether to show grid and coordinate axes
+  showGridAndAxes: false, // 是否显示网格和坐标轴
   // Wireframe显示控制
-  showWireframe: false, // Whether to show mesh wireframe borders
+  showWireframe: false, // 是否显示mesh的wireframe边框
   // 摄像头控制
-  isNewFileLoaded: false, // Flag indicating new file loaded, used to control camera reset
+  isNewFileLoaded: false, // 标识是否加载了新文件，用于控制摄像头重置
 };
 
 function annotationReducer(state, action) {
@@ -83,6 +84,7 @@ function annotationReducer(state, action) {
         labelInfo,
         originalScene,
         interactionMapping,
+        originalFileBuffer, // 新增：原始文件的ArrayBuffer数据
         labels // 关键修复：从 glbParser.js 解析结果中提取标签定义
       } = action.payload;
       const hasMesh = faces !== null && faces.length > 0;
@@ -153,6 +155,7 @@ function annotationReducer(state, action) {
         textureFile: textureFile,
         originalScene: originalScene || null, // 新增：原始场景对象
         interactionMapping: interactionMapping || null, // 新增：交互映射
+        originalFileBuffer: originalFileBuffer || null, // 新增：原始文件ArrayBuffer
         // --- 关键修复：确保用解析结果中的labels来更新状态 ---
         labels: labels || [], // 使用从GLB文件中解析出的标签定义
         isPointCloudVisible: !hasMesh, // 如果有Mesh，默认隐藏点云
@@ -201,11 +204,11 @@ function annotationReducer(state, action) {
         annotationBox: action.payload,
       };
     case 'SET_SELECTED_POINTS':
-      // Only save history when new selection differs from current selection
+      // 只有当新选择与当前选择不同时才保存历史
       const newSelection = action.payload;
       const currentSelection = state.selectedPoints;
       
-      // Compare if arrays are the same
+      // 比较数组是否相同
       const isSameSelection = newSelection.length === currentSelection.length && 
         newSelection.every((val, index) => val === currentSelection[index]);
       
@@ -223,7 +226,7 @@ function annotationReducer(state, action) {
     case 'APPLY_LABELS':
       const { pointIndices, labelId } = action.payload;
       
-      // Use Set for improved lookup performance
+      // 使用Set提高查找性能
       const pointIndicesSet = new Set(pointIndices);
       
       const newPoints = state.points.map((point, index) => {
@@ -233,7 +236,7 @@ function annotationReducer(state, action) {
         return point;
       });
       
-      // Defensive programming: safely get or initialize labelInfo and labelStats
+      // 防御性编程：安全地获取或初始化 labelInfo 和 labelStats
       const currentLabelInfo = state.labelInfo || { 
         labelStats: {}, 
         faceLabelStats: {}, 
@@ -244,16 +247,16 @@ function annotationReducer(state, action) {
       };
       const currentLabelStats = currentLabelInfo.labelStats || {};
       
-      // Incrementally update label statistics instead of recalculating everything
+      // 增量更新标签统计信息而不是重新计算所有
       const labelStats = { ...currentLabelStats };
       let labeledCountDelta = 0;
       
-      // Handle modified points
+      // 处理被修改的点
       pointIndices.forEach(index => {
         const oldPoint = state.points[index];
         const newPoint = newPoints[index];
         
-        // Remove old label statistics
+        // 移除旧标签统计
         if (oldPoint.labelId && oldPoint.labelId !== 0) {
           const oldLabelKey = oldPoint.labelId.toString();
           labelStats[oldLabelKey] = (labelStats[oldLabelKey] || 1) - 1;
@@ -263,7 +266,7 @@ function annotationReducer(state, action) {
           labeledCountDelta--;
         }
         
-        // Add new label statistics
+        // 添加新标签统计
         if (newPoint.labelId && newPoint.labelId !== 0) {
           const newLabelKey = newPoint.labelId.toString();
           labelStats[newLabelKey] = (labelStats[newLabelKey] || 0) + 1;
@@ -392,7 +395,7 @@ function annotationReducer(state, action) {
         selectedPoints: invertedSelection
       };
       
-      // If mesh exists, also invert face selection
+      // 如果有mesh，也反选面片
       if (state.hasMesh && state.faces && state.faces.length > 0) {
         const totalFaces = state.faces.length;
         const currentFaceSelectionSet = new Set(state.selectedFaces);
